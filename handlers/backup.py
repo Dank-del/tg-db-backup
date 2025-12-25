@@ -22,8 +22,10 @@ class BackupCommand(BaseCommand):
         if not db_config:
             await event.respond(f"Database '{db_name}' not found in configuration.")
             return
+        
+        progress_message = await event.reply(f"Starting backup of '{db_name}'...")
         try:
-            await self.backup_service.backup_database(db_config)
-            await event.respond(f"Backup of '{db_name}' completed successfully.")
+            await self.backup_service.backup_database(db_config, progress_message=progress_message)
+            await progress_message.edit(f"Backup of '{db_name}' completed successfully.")
         except Exception as e:
-            await event.respond(f"Backup of '{db_name}' failed: {str(e)}")
+            await progress_message.edit(f"Backup of '{db_name}' failed: {str(e)}")
