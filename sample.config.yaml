@@ -1,0 +1,10 @@
+databases:
+  - url: "postgresql://postgres@localhost:5432/kigyo"
+    channel_id: '-100124323282'
+    schedule:
+      every: 1
+      unit: day
+      at: '10:00'
+  # - url: ""
+  #   channel_id: ''
+  #   schedule: {}

@@ -4,6 +4,7 @@ from telethon import TelegramClient, events
 from telethon.events import NewMessage
 import re
 import logging
+from services.config import config_service
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,6 @@ class BaseCommand(ABC):
         Parse command arguments from message text.
         Extracts text after the command.
         """
-        # Find the command in the text
         match = re.search(self.pattern, text)
         if not match:
             return []
@@ -116,7 +116,7 @@ class BaseCommand(ABC):
         Check if this command can be executed in the current context.
         Override in subclasses to add permissions, context checks, etc.
         """
-        return True
+        return event.sender_id == config_service.OWNER_ID
 
     @abstractmethod
     async def execute(self, event: NewMessage.Event, args: List[str]) -> Any:
@@ -150,7 +150,6 @@ class BaseCommand(ABC):
         Don't override this - override execute() instead.
         """
         try:
-            # Check if the message matches this command's pattern
             if not self.matches(event.raw_text):
                 return
 
