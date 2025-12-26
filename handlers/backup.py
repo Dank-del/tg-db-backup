@@ -1,5 +1,5 @@
 from common.base_command import BaseCommand
-from typing import List, Dict, Any
+from typing import List
 
 
 class BackupCommand(BaseCommand):

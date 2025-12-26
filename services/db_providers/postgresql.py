@@ -6,6 +6,12 @@ from common.db_backup import DatabaseBackup
 
 
 class PostgreSQLBackup(DatabaseBackup):
+    """A backup provider for PostgreSQL databases.
+
+    This class implements the DatabaseBackup interface to perform asynchronous backups
+    of PostgreSQL databases using the pg_dump command-line tool. It generates a timestamped
+    SQL dump file containing the database schema and data.
+    """
     async def backup(self, db_config: Dict[str, Any]) -> str:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{db_config['database'] or 'backup'}_{timestamp}.sql"
