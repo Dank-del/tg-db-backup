@@ -6,6 +6,8 @@ class BackupCommand(BaseCommand):
     command_name = "backup"
     description = "Perform an immediate backup of a specified database."
     aliases = ["bkp"]
+    min_args = 1
+    usage = "Usage: /{command} <database_name>"
 
     def __init__(self, client, backup_service, db_parser):
         super().__init__(client)
@@ -13,9 +15,6 @@ class BackupCommand(BaseCommand):
         self.db_parser = db_parser
 
     async def execute(self, event, args: List[str]):
-        if not args:
-            await event.respond("Usage: /backup <database_name>")
-            return
         db_name = args[0]
         databases = self.db_parser.parse()
         db_config = next((db for db in databases if db['database'] == db_name), None)

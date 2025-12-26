@@ -46,6 +46,22 @@ class BaseCommand(ABC):
         return self._aliases
 
     @property
+    def min_args(self) -> int:
+        """Minimum number of arguments required for this command"""
+        return getattr(self, "min_args", 0)
+
+    @property
+    def usage(self) -> str:
+        """Usage message for the command"""
+        cmd = getattr(self, 'matched_command', self.command_name)
+        if hasattr(self, "usage"):
+            return self.usage.format(command=cmd)
+        if self.min_args > 0:
+            args_str = " ".join([f"<arg{i+1}>" for i in range(self.min_args)])
+            return f"Usage: /{cmd} {args_str}"
+        return f"Usage: /{cmd}"
+
+    @property
     def prefixes(self) -> List[str]:
         """Command prefixes to support (e.g., ['/', '!'])"""
         return self._prefixes
@@ -53,7 +69,7 @@ class BaseCommand(ABC):
     @property
     def pattern(self) -> str:
         """
-        Auto-generated regex pattern that matches all prefixes + command name.
+        Auto-generated regex pattern that matches all prefixes + command names (including aliases).
         """
         if not self.command_name:
             raise ValueError(
@@ -62,15 +78,16 @@ class BaseCommand(ABC):
         escaped_prefixes = [re.escape(prefix) for prefix in self.prefixes]
 
         prefix_pattern = "|".join(escaped_prefixes)
-        command_pattern = re.escape(self.command_name)
+        commands = [self.command_name] + self.aliases
+        command_pattern = "|".join(re.escape(cmd) for cmd in commands)
 
-        return rf"(?i)(^|\s)({prefix_pattern}){command_pattern}(\s|$)"
+        return rf"(?i)(^|\s)({prefix_pattern})({command_pattern})(\s|$)"
 
-    def matches(self, text: str) -> bool:
+    def matches(self, text: str):
         """Check if the given text matches this command's pattern"""
         if not self.pattern:
-            return False
-        return bool(re.match(self.pattern, text, re.IGNORECASE))
+            return None
+        return re.match(self.pattern, text, re.IGNORECASE)
 
     def parse_args(self, text: str) -> List[str]:
         """
@@ -150,13 +167,19 @@ class BaseCommand(ABC):
         Don't override this - override execute() instead.
         """
         try:
-            if not self.matches(event.raw_text):
+            match_obj = self.matches(event.raw_text)
+            if not match_obj:
                 return
 
             if not await self.can_execute(event):
                 return
 
+            self.matched_command = match_obj.group(3)
             args = self.parse_args(event.raw_text)
+            if len(args) < self.min_args:
+                await event.reply(self.usage.format(command=self.matched_command))
+                return
+
             await self.execute(event, args)
 
         except Exception as e:
