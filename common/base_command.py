@@ -48,7 +48,10 @@ class BaseCommand(ABC):
     @property
     def min_args(self) -> int:
         """Minimum number of arguments required for this command"""
-        return getattr(self, "min_args", 0)
+        for cls in type(self).__mro__:
+            if 'min_args' in cls.__dict__ and not isinstance(cls.__dict__['min_args'], property):
+                return cls.__dict__['min_args']
+        return 0
 
     @property
     def usage(self) -> str:
@@ -155,7 +158,7 @@ class BaseCommand(ABC):
         Handle errors that occur during command execution.
         Override in subclasses for custom error handling.
         """
-        logger.error(f"Error executing command {self.command_name}: {error}")
+        logger.error(f"Error executing command {self.command_name}: {error}", stack_info=True, exc_info=True)
         try:
             await event.reply(f"❌ Error executing command: {str(error)}")
         except Exception as reply_error:

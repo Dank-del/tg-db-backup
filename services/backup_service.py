@@ -4,6 +4,7 @@ from datetime import datetime
 import asyncio
 
 from services.config import ConfigService
+from services.database_config import DatabaseConfigParser
 from services.db_providers.postgresql import PostgreSQLBackup
 
 
@@ -49,7 +50,7 @@ class BackupService:
     """
     def __init__(self, config_service, db_parser):
         self.config_service: ConfigService = config_service
-        self.db_parser = db_parser
+        self.db_parser: DatabaseConfigParser = db_parser
         self.backup_handlers = {
             "postgresql": PostgreSQLBackup(),
         }
