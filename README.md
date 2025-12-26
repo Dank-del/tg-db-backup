@@ -34,5 +34,5 @@ To add support for more databases, implement a new class inheriting from `Databa
 
 4. **Run the bot**
    ```bash
-   python main.py
+   uv run main.py
    ```
