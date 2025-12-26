@@ -1,16 +1,19 @@
 import os
-import subprocess
 from typing import Dict, Any, Optional
 from datetime import datetime
 import asyncio
 
 from services.config import ConfigService
+from services.db_providers.postgresql import PostgreSQLBackup
 
 
 class BackupService:
     def __init__(self, config_service, db_parser):
         self.config_service: ConfigService = config_service
         self.db_parser = db_parser
+        self.backup_handlers = {
+            "postgresql": PostgreSQLBackup(),
+        }
 
     async def backup_all_databases(self):
         databases = self.db_parser.parse()
@@ -19,35 +22,12 @@ class BackupService:
                 await self.backup_database(db)
 
     async def backup_database(self, db_config: Dict[str, Any], progress_message: Optional[Any] = None):
-        if db_config["protocol"] == "postgresql":
-            await self._backup_postgresql(db_config, progress_message)
-        else:
+        handler = self.backup_handlers.get(db_config["protocol"])
+        if not handler:
             raise NotImplementedError(
                 f"Backup for {db_config['protocol']} not implemented"
             )
-
-    async def _backup_postgresql(self, db_config: Dict[str, Any], progress_message: Optional[Any] = None):
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{db_config['database'] or 'backup'}_{timestamp}.sql"
-        cmd = [
-            "pg_dump",
-            "--host",
-            db_config["host"],
-            "--port",
-            db_config["port"],
-            "--username",
-            db_config["user"],
-            "--dbname",
-            db_config["database"],
-            "--file",
-            filename,
-        ]
-        env = os.environ.copy()
-        if db_config["password"]:
-            env["PGPASSWORD"] = db_config["password"]
-        result = subprocess.run(cmd, env=env, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"pg_dump failed: {result.stderr}")
+        filename = await handler.backup(db_config)
         try:
             await self._send_to_channel(db_config["channel_id"], filename, progress_message)
         finally:
@@ -65,7 +45,7 @@ class BackupService:
                 def progress(current, total):
                     if total > 0:
                         percent = (current / total) * 100
-                        if percent - last_update[0] >= 10:  # update every 10%
+                        if percent - last_update[0] >= 10:
                             last_update[0] = percent
                             loop.create_task(progress_message.edit(f"Upload progress: {percent:.1f}%"))
                 await self.config_service.TELETHON_CLIENT.send_file(channel_id, filename, caption=caption, progress_callback=progress)
